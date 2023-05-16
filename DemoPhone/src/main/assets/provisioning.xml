@@ -1,0 +1,17 @@
+<?xml version="1.1"?>
+<provisioning>
+    <!--
+        Provisioning example:
+        Let's use address book as contact source. Note that you still need to trigger initial sync
+        manually, see MainActivity.java for that.
+    -->
+    <prefKeys>
+        <prop name="allowNativeContacts" default="1"/>
+        <prop name="contactSourceType" default="ab"/>
+
+        <!-- Comment this block if you wish to use legacy (standard) mode for calls -->
+        <prop name="sipisDisabled" default="0"/>
+        <prop name="pushNotificationsEnabled" default="1"/>
+
+    </prefKeys>
+</provisioning>

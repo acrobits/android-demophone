@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+
+        // Acrobits Maven
+        maven {
+            url "https://maven.acrobits.net/repository/maven-releases/"
+            credentials {
+                username acrobits_saas_package
+                password acrobits_saas_key
+            }
+        }
+    }
+}
+
+include ':DemoPhone'
