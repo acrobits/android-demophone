@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -27,11 +28,13 @@ import android.widget.Toast;
 import com.google.firebase.FirebaseApp;
 
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import cz.acrobits.ali.AndroidUtil;
 import cz.acrobits.ali.Log;
 import cz.acrobits.commons.util.CollectionUtil;
@@ -291,8 +294,12 @@ public class MainActivity
                 .setContentIntent(mNotificationIntent);
         if (Build.VERSION.SDK_INT >= 26)
             mNotification.setChannelId(Instance.Notifications.CHANNEL_ID);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !Settings.canDrawOverlays(this))
+        
+        // Request notification permission on Android 13
+        NotificationManager nm = Objects.requireNonNull(ContextCompat.getSystemService(this, NotificationManager.class));
+        if (Build.VERSION.SDK_INT >= 33 && !nm.areNotificationsEnabled())
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 0);
+        else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !Settings.canDrawOverlays(this))
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle(R.string.permission_needed);

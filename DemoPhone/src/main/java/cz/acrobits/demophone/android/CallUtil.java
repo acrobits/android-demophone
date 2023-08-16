@@ -1,19 +1,17 @@
 package cz.acrobits.demophone.android;
 
-import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
-import cz.acrobits.ali.AndroidUtil;
 import cz.acrobits.ali.Json;
 import cz.acrobits.ali.Log;
 import cz.acrobits.libsoftphone.Instance;
+import cz.acrobits.libsoftphone.InstanceExt;
 import cz.acrobits.libsoftphone.data.Call;
 import cz.acrobits.libsoftphone.data.DialAction;
 import cz.acrobits.libsoftphone.event.CallEvent;
@@ -21,7 +19,6 @@ import cz.acrobits.libsoftphone.event.Event;
 import cz.acrobits.libsoftphone.event.EventStream;
 import cz.acrobits.libsoftphone.event.StreamParty;
 import cz.acrobits.libsoftphone.event.history.StreamQuery;
-import cz.acrobits.libsoftphone.telecom.TelecomUtil;
 
 /**
  * Utility class containing methods that handle common calling scenarios.
@@ -36,144 +33,6 @@ public class CallUtil
 //******************************************************************
 {
     private static final Log LOG = new Log(CallUtil.class);
-
-    public static final int REDIRECT_NONE = 0;
-    public static final int REDIRECT_TRANSFER = REDIRECT_NONE + 1;
-    public static final int REDIRECT_ATT_TRANSFER = REDIRECT_TRANSFER + 1;
-    public static final int REDIRECT_FORWARD = REDIRECT_ATT_TRANSFER + 1;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({REDIRECT_NONE, REDIRECT_TRANSFER, REDIRECT_ATT_TRANSFER, REDIRECT_FORWARD})
-    public @interface RedirectMode
-    {
-    }
-
-    //******************************************************************
-    public static class RedirectStateHolder
-    //******************************************************************
-    {
-        private @RedirectMode int mRedirectMode;
-        private CallEvent mRedirectEvent;
-
-        //******************************************************************
-        public RedirectStateHolder(@RedirectMode int redirectMode, @NonNull CallEvent redirectEvent)
-        //******************************************************************
-        {
-            mRedirectMode = redirectMode;
-            mRedirectEvent = redirectEvent;
-        }
-
-        //******************************************************************
-        public @RedirectMode int getRedirectMode()
-        //******************************************************************
-        {
-            return mRedirectMode;
-        }
-
-        //******************************************************************
-        public CallEvent getRedirectEvent()
-        //******************************************************************
-        {
-            return mRedirectEvent;
-        }
-    }
-
-    private static RedirectStateHolder sRedirectState;
-
-    /**
-     * Att. Transfer a call
-     *
-     * @param callEvent The call to transfer.
-     */
-    //******************************************************************
-    public static void attTransferCall(@NonNull CallEvent callEvent)
-    //******************************************************************
-    {
-        // if call attended transfer flow already started
-        if (getRedirectMode() == REDIRECT_ATT_TRANSFER)
-        {
-            if(callEvent.getEventId() != sRedirectState.getRedirectEvent().getEventId())
-            {
-                Instance.Calls.Conferences.attendedTransfer(callEvent, sRedirectState.getRedirectEvent());
-                clearRedirectState();
-            }
-        }
-        else
-        {
-            // If a call is a conference call and has exactly two participants
-            if (isConference(callEvent))
-            {
-                CallEvent[] calls = Instance.Calls.Conferences.getCalls(callEvent);
-                if(calls.length == 2)
-                {
-                    Instance.Calls.Conferences.attendedTransfer(calls[0], calls[1]);
-                    return;
-                }
-                else
-                {
-                    // No suitable calls, A conference call cannot be transferred.
-                    // Show some UI with warning
-                }
-            }
-
-            int establishedSipCallCount = getEstablishedSipCallCount();
-            if(establishedSipCallCount > 2)
-            {
-                // Show UI which allows user to select which call he wants to transfer
-                return;
-            }
-            if (establishedSipCallCount == 2)
-            {
-                for (String conf : Instance.Calls.Conferences.list())
-                {
-                    for (CallEvent call : Instance.Calls.Conferences.getCalls(conf))
-                    {
-                        if (callEvent.getEventId() != call.getEventId())
-                        {
-                            Instance.Calls.Conferences.attendedTransfer(callEvent, call);
-                            return;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Begins the call transfer, Now user needs to dial a new call to transfer to
-                beginRedirect(callEvent, REDIRECT_ATT_TRANSFER);
-                // Keypad or contact picker Fragment/Activity should be shown NOW.
-            }
-        }
-    }
-
-
-    /**
-     * Transfer a call
-     *
-     * @param callEvent The call to transfer.
-     */
-    //******************************************************************
-    public static void transferCall(@NonNull CallEvent callEvent)
-    //******************************************************************
-    {
-        // Transfer call flow begins, user has to dial a new call to transfer to
-        // Keypad or contact picker Fragment/Activity should be shown.
-        beginRedirect(callEvent, REDIRECT_TRANSFER);
-        // Keypad or contact picker Fragment/Activity should be shown NOW.
-    }
-
-    /**
-     * Forward a call
-     *
-     * @param callEvent The call that should be forwarded.
-     */
-    //******************************************************************
-    public static void forwardCall(@NonNull CallEvent callEvent)
-    //******************************************************************
-    {
-        // Forward call flow begins, user has to dial a new call to forward to.
-        beginRedirect(callEvent, REDIRECT_FORWARD);
-        // Keypad or contact picker Fragment/Activity should be shown NOW.
-    }
 
     /**
      * Split a call from a conference
@@ -225,14 +84,12 @@ public class CallUtil
         if(firstConferenceId.equals(secondConferenceId))
             return;
 
-        CallEvent[] firstConferenceCalls = Instance.Calls.Conferences.getCalls(secondConferenceId);
-        CallEvent[] secConferenceCalls = Instance.Calls.Conferences.getCalls(firstConferenceId);
+        Stream<CallEvent> firstConferenceCalls = InstanceExt.Calls.Conferences.getAllCalls(firstConferenceId);
+        Stream<CallEvent> secConferenceCalls = InstanceExt.Calls.Conferences.getAllCalls(secondConferenceId);
 
         String newConferenceId = Instance.Calls.Conferences.generate("newConf");
-        for (CallEvent event : firstConferenceCalls)
-            Instance.Calls.Conferences.move(event, newConferenceId);
-        for (CallEvent event : secConferenceCalls)
-            Instance.Calls.Conferences.move(event, newConferenceId);
+        Stream.concat(firstConferenceCalls, secConferenceCalls)
+                .forEach(call -> Instance.Calls.Conferences.move(call, newConferenceId));
 
         Instance.Calls.Conferences.setActive(newConferenceId);
     }
@@ -334,94 +191,7 @@ public class CallUtil
             for (Map.Entry<String, Json> entry : transients.entrySet())
                 event.transients.put(entry.getKey(), entry.getValue());
 
-        int redirectMode = sRedirectState == null
-                ? REDIRECT_NONE
-                : sRedirectState.getRedirectMode();
-
-        switch (redirectMode)
-        {
-            case REDIRECT_NONE:
-            case REDIRECT_ATT_TRANSFER:
-                int result = Instance.Events.post(event);
-                return result == Instance.Events.PostResult.SUCCESS;
-            case REDIRECT_TRANSFER:
-                Instance.Calls.Conferences.beginTransfer(sRedirectState.getRedirectEvent());
-                clearRedirectState();
-                return Instance.Events.post(event) == Instance.Events.PostResult.SUCCESS;
-            case REDIRECT_FORWARD:
-                Instance.Calls.Conferences.beginForward(sRedirectState.getRedirectEvent());
-                clearRedirectState();
-                return Instance.Events.post(event) == Instance.Events.PostResult.SUCCESS;
-        }
-        return false;
-    }
-
-    /**
-     * Begin call redirection flow.
-     *
-     * @param callEvent The call to be redirected.
-     * @param mode The redirection mode.
-     */
-    //******************************************************************
-    public static void beginRedirect(@NonNull CallEvent callEvent, @RedirectMode int mode)
-    //******************************************************************
-    {
-        sRedirectState = new RedirectStateHolder(mode, callEvent);
-
-        switch (mode)
-        {
-            case REDIRECT_TRANSFER:
-            case REDIRECT_ATT_TRANSFER:
-                Instance.Calls.setHeld(callEvent, true);
-                break;
-            case REDIRECT_FORWARD:
-                Instance.Calls.ignoreIncoming(callEvent);
-                break;
-            case REDIRECT_NONE:
-            default:
-                break;
-        }
-    }
-
-    /**
-     * Reset call redirection state.
-     */
-    //******************************************************************
-    public static void clearRedirectState()
-    //******************************************************************
-    {
-        sRedirectState = null;
-    }
-
-    //******************************************************************
-    public static int getRedirectMode()
-    //******************************************************************
-    {
-        return sRedirectState == null ? REDIRECT_NONE : sRedirectState.getRedirectMode();
-    }
-
-    /**
-     * Cancel call redirection flow.
-     */
-    //******************************************************************
-    public static void cancelRedirect()
-    //******************************************************************
-    {
-        if(sRedirectState == null)
-            return;
-
-        switch (sRedirectState.getRedirectMode())
-        {
-            case REDIRECT_TRANSFER:
-            case REDIRECT_ATT_TRANSFER:
-                Instance.Calls.setHeld(sRedirectState.getRedirectEvent(), false);
-                break;
-            case REDIRECT_NONE:
-            case REDIRECT_FORWARD:
-                break;
-        }
-
-        sRedirectState = null;
+        return Instance.Events.post(event) == Instance.Events.PostResult.SUCCESS;
     }
 
     /**
@@ -433,12 +203,12 @@ public class CallUtil
     public static void split(@NonNull String confId)
     //******************************************************************
     {
-        CallEvent[] confCalls = Instance.Calls.Conferences.getCalls(confId);
-        for (CallEvent callEvent : confCalls)
-        {
-            Instance.Calls.Conferences.split(callEvent,false);
-            Instance.Calls.setHeld(callEvent, true);
-        }
+        InstanceExt.Calls.Conferences.getAllCalls(confId)
+                .forEach(callEvent ->
+                        {
+                            Instance.Calls.Conferences.split(callEvent, false);
+                            Instance.Calls.setHeld(callEvent, true);
+                        });
     }
 
     /**
@@ -486,12 +256,7 @@ public class CallUtil
     public static boolean groupContainsCallInNonTerminalState(@NonNull String confId)
     //******************************************************************
     {
-        for(CallEvent call : Instance.Calls.Conferences.getCalls(confId))
-        {
-            if(!Instance.Calls.getState(call).isTerminal())
-                return true;
-        }
-        return false;
+        return InstanceExt.Calls.Conferences.getAllCalls(confId).anyMatch(call -> !Instance.Calls.getState(call).isTerminal());
     }
 
 
