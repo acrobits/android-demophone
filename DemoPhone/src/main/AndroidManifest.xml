@@ -62,5 +62,40 @@
         <receiver
             android:name=".DemoNotificationBroadcastReceiver"
             android:exported="true" />
+
     </application>
+
+    <!-- The queries node fixes package visibility filtering on Android 11+ https://developer.android.com/training/package-visibility -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="*" />
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.CALL" />
+        </intent>
+    </queries>
 </manifest> 
