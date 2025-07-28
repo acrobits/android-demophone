@@ -2,6 +2,7 @@ package cz.acrobits.demophone.android;
 
 import com.google.firebase.messaging.RemoteMessage;
 import org.jetbrains.annotations.NotNull;
+import androidx.annotation.NonNull;
 import cz.acrobits.ali.AndroidUtil;
 import cz.acrobits.libsoftphone.Instance;
 
@@ -12,7 +13,7 @@ public class DemoFirebaseMessagingService
 {
     //******************************************************************
     @Override
-    public void onMessageReceived(RemoteMessage remoteMessage)
+    public void onMessageReceived(@NonNull RemoteMessage remoteMessage)
     //******************************************************************
     {
         DemoPhoneApplication.handlePush(remoteMessage);

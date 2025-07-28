@@ -6,6 +6,7 @@
     android:background="#000">
 
     <LinearLayout
+        android:id="@+id/call_screen_container"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:orientation="vertical">

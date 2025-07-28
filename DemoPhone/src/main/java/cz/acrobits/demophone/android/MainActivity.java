@@ -1,6 +1,7 @@
 package cz.acrobits.demophone.android;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
@@ -17,6 +18,7 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -24,17 +26,17 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.firebase.FirebaseApp;
-
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import cz.acrobits.ali.AndroidUtil;
 import cz.acrobits.ali.Log;
 import cz.acrobits.commons.util.CollectionUtil;
@@ -314,6 +316,13 @@ public class MainActivity
                 .getApps(this).size() == 0 ? View.GONE : View.VISIBLE);
 
         mCall = CallUtil.getCallById(getIntent().getLongExtra(EXTRA_EVENT_ID, -1));
+
+        ViewGroup callContainer = findViewById(R.id.call_screen_container);
+        ViewCompat.setOnApplyWindowInsetsListener(callContainer, (v, windowInsets) -> {
+            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     //******************************************************************
@@ -375,6 +384,7 @@ public class MainActivity
      * @param v The button that was clicked on.
      */
     //******************************************************************
+    @SuppressLint("NonConstantResourceId")
     @Override
     public void onClick(@NonNull View v)
     //******************************************************************
@@ -862,7 +872,12 @@ public class MainActivity
         if (mCall == null || Instance.Calls.getState(mCall) != Call.State.IncomingRinging)
             return;
 
-        if (!Instance.Calls.rejectIncomingEverywhere(mCall))
+        boolean rejected = Instance.Calls.rejectIncomingEverywhere(
+                mCall,
+                new Call.RejectReason("Declined by user from call screen", Call.RejectReason.Type.User)
+        );
+
+        if (!rejected)
             Instance.Calls.close(mCall);
     }
 

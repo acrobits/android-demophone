@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    compileSdk 35
     namespace "cz.acrobits.demophone.android"
 
     compileOptions {
@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 33
+        targetSdkVersion 35
         applicationId acrobits_saas_package
         versionCode 1
         versionName "DEMO"
@@ -31,14 +31,14 @@ android {
 }
 
 dependencies {
-    implementation 'cz.acrobits.android:commons:latest.release'
     implementation 'cz.acrobits:libsoftphone:latest.release'
 
-    implementation 'org.jetbrains:annotations:16.0.2'
-    implementation 'androidx.annotation:annotation:1.4.0'
+    implementation 'org.jetbrains:annotations:26.0.2'
+    implementation 'androidx.annotation:annotation:1.9.1'
     implementation enforcedPlatform('com.google.firebase:firebase-bom:31.2.0')
     implementation 'com.google.firebase:firebase-messaging'
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+    implementation 'androidx.core:core:1.15.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }
 
 if (project.layout.projectDirectory.file('google-services.json').asFile.exists())

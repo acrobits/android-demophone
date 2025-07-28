@@ -40,7 +40,10 @@ public class DemoNotificationBroadcastReceiver extends BroadcastReceiver
             for(String conf: Instance.Calls.Conferences.list())
                 for(CallEvent call: Instance.Calls.Conferences.getCalls(conf))
                     if(call.getEventId() == eventId)
-                        Instance.Calls.rejectIncomingEverywhere(call);
+                        Instance.Calls.rejectIncomingEverywhere(
+                                call,
+                                new Call.RejectReason("Declined by user from notification", Call.RejectReason.Type.User)
+                        );
         }
     }
 

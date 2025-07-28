@@ -1,6 +1,5 @@
 package cz.acrobits.demophone.android;
 
-import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -10,16 +9,21 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
-
+import java.util.Objects;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
-
+import androidx.core.app.Person;
+import androidx.core.graphics.drawable.IconCompat;
 import cz.acrobits.ali.AndroidUtil;
+import cz.acrobits.libsoftphone.contacts.ContactSource;
 import cz.acrobits.libsoftphone.data.Call;
 import cz.acrobits.libsoftphone.data.ResolvedPeerAddress;
 import cz.acrobits.libsoftphone.event.CallEvent;
 import cz.acrobits.libsoftphone.event.Event;
+import cz.acrobits.libsoftphone.event.RemoteUser;
 import cz.acrobits.libsoftphone.event.StreamParty;
+import cz.acrobits.libsoftphone.internal.contacts.ContactsUtil;
 
 //******************************************************************
 public class DemoNotificationHandler
@@ -41,7 +45,7 @@ public class DemoNotificationHandler
     }
 
     //******************************************************************
-    @TargetApi(26)
+    @RequiresApi(26)
     protected void createNotificationChannel(String id,
                                              String name,
                                              int importance)
@@ -62,32 +66,61 @@ public class DemoNotificationHandler
         switch(state)
         {
             case IncomingRinging:
-                String messageText = context.getResources().getString(R.string.notification_call_incoming);
-                Intent intent = new Intent(context, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra(MainActivity.EXTRA_EVENT_ID, callEvent.getEventId());
-
-                PendingIntent pIntent = PendingIntent.getActivity(context, 0, intent,
-                        PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-                Notification notification = new NotificationCompat.Builder(context, CHANNEL_INCOMING_CALL)
-                        .setSmallIcon(R.drawable.icon_notification)
-                        .setPriority(NotificationCompat.PRIORITY_HIGH)
-                        .setContentIntent(pIntent)
-                        .setTicker(messageText)
-                        .setContentTitle(getEventAddress(callEvent))
-                        .setContentText(messageText)
-                        .setCategory(NotificationCompat.CATEGORY_CALL)
-                        .setFullScreenIntent(pIntent, true)
-                        .addAction(createAnswerAction(context, callEvent.getEventId()))
-                        .addAction(createDismissAction(context, callEvent.getEventId()))
-                        .setAutoCancel(false)
-                        .setOngoing(true)
-                        .build();
-
-                mNotificationManager.notify(ID_INCOMING_CALL, notification);
-                break;
+                mNotificationManager.notify(ID_INCOMING_CALL, createRingingNotification(context, callEvent));
+                return;
         }
+
+        cancelIncomingCallNotification();
+    }
+
+    //******************************************************************
+    private Notification createRingingNotification(@NonNull Context context, @NonNull CallEvent callEvent)
+    //******************************************************************
+    {
+        String messageText = context.getResources().getString(R.string.notification_call_incoming);
+
+        Intent intent = new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_EVENT_ID, callEvent.getEventId());
+
+        PendingIntent pIntent = PendingIntent.getActivity(context, 0, intent,
+                                                          PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        RemoteUser remoteUser = callEvent.getRemoteUser();
+        StreamParty streamParty = Objects.requireNonNull(remoteUser).toStreamParty();
+
+        String personUri = null;
+        if (streamParty.contactId != null && streamParty.contactId.source == ContactSource.ADDRESS_BOOK)
+            personUri = ContactsUtil.getLookupUri(streamParty.contactId.id);
+
+        Person person = new Person.Builder()
+                .setName(remoteUser.getDisplayName())
+                .setIcon(IconCompat.createWithResource(context, R.drawable.person_24px))
+                .setUri(personUri)
+                .setKey(remoteUser.getTransportUri())
+                .setImportant(true)
+                .build();
+
+        PendingIntent answer = Objects.requireNonNull(createAnswerAction(context, callEvent.getEventId()).getActionIntent());
+        PendingIntent dismiss = Objects.requireNonNull(createDismissAction(context, callEvent.getEventId()).getActionIntent());
+
+        NotificationCompat.Style style = NotificationCompat.CallStyle
+                .forIncomingCall(person, dismiss, answer)
+                .setIsVideo(false);
+
+        return new NotificationCompat.Builder(context, CHANNEL_INCOMING_CALL)
+                .setSmallIcon(R.drawable.ic_call_black_24dp)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pIntent)
+                .setTicker(messageText)
+                .setContentTitle(getEventAddress(callEvent))
+                .setContentText(messageText)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setFullScreenIntent(pIntent, true)
+                .setStyle(style)
+                .setAutoCancel(false)
+                .setOngoing(true)
+                .build();
     }
 
     //******************************************************************

@@ -208,8 +208,15 @@ public class DemoPhoneApplication
         {
             Xml prov = null;
 
-            // The library has to be loaded before any SDK code can be used
-            Instance.loadLibrary(this);
+            try
+            {
+                // The library has to be loaded before any SDK code can be used
+                Instance.loadLibrary(this);
+            }
+            catch (Throwable e)
+            {
+                throw new RuntimeException(e);
+            }
 
             // For SaaS SDK only
             if (CollectionUtil.contains(SDK.features, SDK.Feature.Provisioning))
@@ -223,7 +230,14 @@ public class DemoPhoneApplication
                 prov.setChild(saas);
             }
 
-            Instance.init(this, prov, DemoPreferences.class);
+            try
+            {
+                Instance.init(this, prov, DemoPreferences.class);
+            }
+            catch (Throwable e)
+            {
+                throw new RuntimeException(e);
+            }
             Instance.setObserver(sListeners);
         }
 
