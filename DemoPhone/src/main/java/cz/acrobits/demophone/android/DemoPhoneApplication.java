@@ -203,6 +203,9 @@ public class DemoPhoneApplication
         if (isRunning())
             throw new IllegalStateException("The application has already started");
 
+        // This is how you can check your JWT key:
+        assert !Instance.isValidJwtLicense(this, "my-jwt-key");
+
         // If the SDK is not yet initialized, initialize it
         if (Instance.preferences == null)
         {
