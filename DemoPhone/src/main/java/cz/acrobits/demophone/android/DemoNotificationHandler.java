@@ -1,28 +1,38 @@
 package cz.acrobits.demophone.android;
 
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
+
 import java.util.Objects;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.graphics.drawable.IconCompat;
 import cz.acrobits.ali.AndroidUtil;
+import cz.acrobits.libsoftphone.Instance;
 import cz.acrobits.libsoftphone.contacts.ContactSource;
+import cz.acrobits.libsoftphone.data.AssetRequest;
 import cz.acrobits.libsoftphone.data.Call;
 import cz.acrobits.libsoftphone.data.ResolvedPeerAddress;
 import cz.acrobits.libsoftphone.event.CallEvent;
 import cz.acrobits.libsoftphone.event.Event;
 import cz.acrobits.libsoftphone.event.RemoteUser;
 import cz.acrobits.libsoftphone.event.StreamParty;
+import cz.acrobits.libsoftphone.glide.GlideImageAssetLoaderExtKt;
 import cz.acrobits.libsoftphone.internal.contacts.ContactsUtil;
 
 //******************************************************************
@@ -66,7 +76,7 @@ public class DemoNotificationHandler
         switch(state)
         {
             case IncomingRinging:
-                mNotificationManager.notify(ID_INCOMING_CALL, createRingingNotification(context, callEvent));
+                notifyIncomingRinging(context, callEvent);
                 return;
         }
 
@@ -74,7 +84,7 @@ public class DemoNotificationHandler
     }
 
     //******************************************************************
-    private Notification createRingingNotification(@NonNull Context context, @NonNull CallEvent callEvent)
+    private void notifyIncomingRinging(@NonNull Context context, @NonNull CallEvent callEvent)
     //******************************************************************
     {
         String messageText = context.getResources().getString(R.string.notification_call_incoming);
@@ -108,7 +118,7 @@ public class DemoNotificationHandler
                 .forIncomingCall(person, dismiss, answer)
                 .setIsVideo(false);
 
-        return new NotificationCompat.Builder(context, CHANNEL_INCOMING_CALL)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_INCOMING_CALL)
                 .setSmallIcon(R.drawable.ic_call_black_24dp)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pIntent)
@@ -119,8 +129,42 @@ public class DemoNotificationHandler
                 .setFullScreenIntent(pIntent, true)
                 .setStyle(style)
                 .setAutoCancel(false)
-                .setOngoing(true)
-                .build();
+                .setOngoing(true);
+
+        if (streamParty.contactId != null)
+        {
+            AssetRequest avatarLarge = Instance.Contacts.getAvatarLarge(streamParty.contactId);
+            if (avatarLarge != null)
+            {
+                GlideImageAssetLoaderExtKt
+                        .loadImageAsset(Glide.with(context).asBitmap(), avatarLarge)
+                        .into(new CustomTarget<Bitmap>() {
+                            @Override
+                            public void onResourceReady(@NonNull Bitmap res, Transition<? super Bitmap> t) {
+                                var updatedPerson = person
+                                        .toBuilder()
+                                        .setIcon(IconCompat.createWithBitmap(res))
+                                        .build();
+
+                                NotificationCompat.Style updatedStyle = NotificationCompat.CallStyle
+                                        .forIncomingCall(updatedPerson, dismiss, answer)
+                                        .setIsVideo(false);
+
+                                builder.setStyle(updatedStyle);
+
+                                mNotificationManager.notify(ID_INCOMING_CALL, builder.build());
+                            }
+
+                            @Override
+                            public void onLoadCleared(@Nullable Drawable placeholder)
+                            {
+                                // Do nothing
+                            }
+                        });
+            };
+        }
+
+        mNotificationManager.notify(ID_INCOMING_CALL, builder.build());
     }
 
     //******************************************************************

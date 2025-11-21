@@ -23,9 +23,12 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 import com.google.firebase.FirebaseApp;
 import java.util.Locale;
 import java.util.Objects;
@@ -42,12 +45,14 @@ import cz.acrobits.ali.Log;
 import cz.acrobits.commons.util.CollectionUtil;
 import cz.acrobits.libsoftphone.Instance;
 import cz.acrobits.libsoftphone.contacts.ContactSource;
+import cz.acrobits.libsoftphone.data.AssetRequest;
 import cz.acrobits.libsoftphone.data.AudioRoute;
 import cz.acrobits.libsoftphone.data.Call;
 import cz.acrobits.libsoftphone.data.DialAction;
 import cz.acrobits.libsoftphone.data.RegistrationState;
 import cz.acrobits.libsoftphone.event.CallEvent;
 import cz.acrobits.libsoftphone.event.StreamParty;
+import cz.acrobits.libsoftphone.glide.GlideImageAssetLoaderExtKt;
 import cz.acrobits.libsoftphone.internal.util.TextChangedListener;
 import cz.acrobits.libsoftphone.permission.Permission;
 import cz.acrobits.libsoftphone.support.Listeners;
@@ -323,6 +328,23 @@ public class MainActivity
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return WindowInsetsCompat.CONSUMED;
         });
+
+        // Synthetic AssetRequest, In normal usage you will get them from the SDK such as Instance.Contacts.getAvatarLarge
+        AssetRequest.UrlAssetRequest light = new AssetRequest.UrlAssetRequest("https://upload.wikimedia.org/wikipedia/commons/a/ad/Balayette.jpg", new AssetRequest.Common(AssetRequest.Fit.Contain, null, null, null));
+        AssetRequest assetRequest = new AssetRequest(light, light);
+
+        ImageView assetRequestExampleImageView = findViewById(R.id.asset_request_example);
+        GlideImageAssetLoaderExtKt
+                .loadImageAsset(Glide.with(assetRequestExampleImageView).asBitmap(), assetRequest)
+                .into(assetRequestExampleImageView);
+
+        /* I Kotlin this would be:
+            Glide
+                .with(imageView)
+                .asBitmap()
+                .loadImageAsset(assetRequest)
+                .into(imageView)
+         */
     }
 
     //******************************************************************

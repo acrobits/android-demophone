@@ -33,6 +33,10 @@ android {
 dependencies {
     implementation 'cz.acrobits:libsoftphone:latest.release'
 
+    // AssetRequest support
+    implementation 'cz.acrobits:libsoftphone.assets:latest.release'
+    implementation 'com.github.bumptech.glide:glide:4.15.1'
+
     implementation 'org.jetbrains:annotations:26.0.2'
     implementation 'androidx.annotation:annotation:1.9.1'
     implementation enforcedPlatform('com.google.firebase:firebase-bom:31.2.0')
