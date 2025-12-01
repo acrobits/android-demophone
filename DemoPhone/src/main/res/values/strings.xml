@@ -5,7 +5,7 @@
 
 	<string name="log_on">Start Log</string>
 	<string name="log_off">Stop Log</string>
-	<string name="quit">Quit</string>
+	<string name="reset">Reset SDK</string>
 	<string name="call">Call</string>
 	<string name="backspace">«</string>
 	<string name="clear">×</string>

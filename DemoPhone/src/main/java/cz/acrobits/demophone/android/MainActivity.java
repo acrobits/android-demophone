@@ -226,7 +226,7 @@ public class MainActivity
         mExitButton = findViewById(R.id.exit_app);
 
         findViewById(R.id.log).setOnClickListener(this);
-        findViewById(R.id.quit).setOnClickListener(this);
+        findViewById(R.id.reset).setOnClickListener(this);
         mBackspaceButton.setOnClickListener(this);
         mClearButton.setOnClickListener(this);
         mCallButton.setOnClickListener(this);
@@ -420,10 +420,8 @@ public class MainActivity
                                            ? R.string.log_off
                                            : R.string.log_on);
                 break;
-            case R.id.quit:
-                if (mCall != null)
-                    hangup("User quit the app");
-                finish();
+            case R.id.reset:
+                resetSDK();
                 break;
             case R.id.backspace:
                 mNumberView
@@ -949,6 +947,34 @@ public class MainActivity
     // ******************************************************************
     {
         Instance.Audio.dtmfOff();
+    }
+
+    /**
+     * Example of how the SDK can be safely stopped and then (after a delay) restarted.
+     */
+    // ******************************************************************
+    private void resetSDK()
+    // ******************************************************************
+    {
+        TerminateTask terminateTask = new TerminateTask()
+        {
+            // ******************************************************************
+            @Override
+            protected void onTerminated()
+            // ******************************************************************
+            {
+                // Here we unhook from SDK events.
+                DemoPhoneApplication.stop();
+
+                // And after a small delay, we restart it.
+                AndroidUtil.handler.postDelayed(DemoPhoneApplication::start, 1000);
+            }
+        };
+
+        // Using our termination helper stop the SDK.
+        // This will unregister all currently registered accounts and close all active calls.
+        // Once the SDK is fully stopped (or a hard timeout has been reached), onTerminated() will be called.
+        terminateTask.execute();
     }
 
     /**

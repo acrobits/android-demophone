@@ -200,9 +200,6 @@ public class DemoPhoneApplication
     public void onStart()
     // ******************************************************************
     {
-        if (isRunning())
-            throw new IllegalStateException("The application has already started");
-
         // This is how you can check your JWT key:
         assert !Instance.isValidJwtLicense(this, "my-jwt-key");
 
@@ -242,6 +239,11 @@ public class DemoPhoneApplication
                 throw new RuntimeException(e);
             }
             Instance.setObserver(sListeners);
+        }
+        else
+        {
+            // SDK already initialized, just respawn the state
+            Instance.State.respawn();
         }
 
         if(Instance.Registration.getAccountCount() == 0)
@@ -322,6 +324,20 @@ public class DemoPhoneApplication
             instance.onStart();
 
         instance.handlePushes();
+    }
+
+    // ******************************************************************
+    @MainThread
+    public static void stop()
+    // ******************************************************************
+    {
+        DemoPhoneApplication instance = instance();
+
+        if (isRunning())
+        {
+            instance.mRunning = false;
+            sListeners.unregister(instance);
+        }
     }
 
     /**
