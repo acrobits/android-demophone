@@ -3,6 +3,7 @@
 	<string name="app_name" translatable="false">Acrobits DemoPhone</string>
 	<string name="app_name_short">DemoPhone</string>
 
+	<string name="camera">Camera</string>
 	<string name="log_on">Start Log</string>
 	<string name="log_off">Stop Log</string>
 	<string name="reset">Reset SDK</string>

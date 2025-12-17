@@ -1,0 +1,45 @@
+[versions]
+
+libsoftphone = "latest.release"
+
+agp = "8.11.2"
+kotlin = "2.1.20"
+kotlin-coroutines = "1.8.0"
+kotlin-serialization = "1.7.0"
+
+androidx-core = "1.15.0"
+androidx-desugaring = "2.1.5"
+
+google-firebase-bom = "31.2.0"
+
+google-gms = "4.4.3"
+
+glide = "4.15.1"
+
+[libraries]
+libsoftphone-novideo = { module = "cz.acrobits:libsoftphone", version.ref = "libsoftphone" }
+libsoftphone-video = { module = "cz.acrobits:libsoftphone.video", version.ref = "libsoftphone" }
+libsoftphone-assets = { module = "cz.acrobits:libsoftphone.assets", version.ref = "libsoftphone" }
+
+androidx-core = { module = "androidx.core:core", version.ref = "androidx-core" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-desugaring = { module = "com.android.tools:desugar_jdk_libs", version.ref = "androidx-desugaring" }
+
+google-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "google-firebase-bom" }
+google-firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
+
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
+kotlin-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlin-coroutines" }
+kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlin-serialization" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+google-services = { id = "com.google.gms.google-services", version.ref = "google-gms" }

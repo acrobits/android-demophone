@@ -10,6 +10,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -40,14 +41,18 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import cz.acrobits.ali.AndroidUtil;
 import cz.acrobits.ali.Log;
 import cz.acrobits.commons.util.CollectionUtil;
+import cz.acrobits.demophone.android.services.DemoServices;
 import cz.acrobits.libsoftphone.Instance;
+import cz.acrobits.libsoftphone.SDK;
+import cz.acrobits.libsoftphone.VideoInstance;
 import cz.acrobits.libsoftphone.contacts.ContactSource;
 import cz.acrobits.libsoftphone.data.AssetRequest;
 import cz.acrobits.libsoftphone.data.AudioRoute;
 import cz.acrobits.libsoftphone.data.Call;
+import cz.acrobits.libsoftphone.data.CameraInfo;
+import cz.acrobits.libsoftphone.data.ColorRequest;
 import cz.acrobits.libsoftphone.data.DialAction;
 import cz.acrobits.libsoftphone.data.RegistrationState;
 import cz.acrobits.libsoftphone.event.CallEvent;
@@ -133,6 +138,9 @@ public class MainActivity
     /** Button to switch the audio route. */
     private Button mSpeakerButton;
 
+    /** Button to switch camera. */
+    private Button mCameraButton;
+
     /** Button to switch logging into LogCat. */
     private Button mLogButton;
 
@@ -200,8 +208,7 @@ public class MainActivity
     {
         super.onCreate(savedInstanceState);
 
-        DemoPhoneApplication.start();
-        DemoPhoneApplication.sListeners.register(this);
+        DemoServices.instance.getListeners().register(this);
 
         setContentView(R.layout.main);
 
@@ -217,6 +224,7 @@ public class MainActivity
         mCallButton = findViewById(R.id.call);
         mMuteButton = findViewById(R.id.mute);
         mSpeakerButton = findViewById(R.id.speaker);
+        mCameraButton = findViewById(R.id.camera);
         mLogButton = findViewById(R.id.log);
         mHoldButton = findViewById(R.id.hold);
         mHangUpButton = findViewById(R.id.hangup);
@@ -224,6 +232,8 @@ public class MainActivity
         mRejectButton = findViewById(R.id.reject);
         mPushTestButton = findViewById(R.id.push_test);
         mExitButton = findViewById(R.id.exit_app);
+        if (!CollectionUtil.contains(SDK.features, SDK.Feature.Video))
+            mCameraButton.setVisibility(View.INVISIBLE);
 
         findViewById(R.id.log).setOnClickListener(this);
         findViewById(R.id.reset).setOnClickListener(this);
@@ -267,13 +277,13 @@ public class MainActivity
             }
         }
 
-        mNumber = DemoPhoneApplication.instance().getNumber();
+        mNumber = DemoServices.instance.getAccountManager().getCurrentNumber().getValue();
         ((TextView) findViewById(R.id.registration_number)).setText(mNumber);
 
         // Reset the speaker button
         resetRoute();
 
-        LOG.error("Sources: %s", (Object) Instance.Contacts.getSources());
+        LOG.info("Sources: %s", (Object) Instance.Contacts.getSources());
 
         // Start address book synchronization
         /* If the app does not have contacts permission, the SDK won't automatically start address
@@ -285,7 +295,7 @@ public class MainActivity
          * For SaaS: you need to enable address book contact source in provisioning, see
          *           assets/provisioning.xml. */
         if (CollectionUtil.contains(Instance.Contacts.getSources(), ContactSource.ADDRESS_BOOK)
-            && !AndroidUtil.checkPermission(Manifest.permission.READ_CONTACTS))
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED)
             Instance.Contacts.ensureValidState(ContactSource.ADDRESS_BOOK);
 
         // Prepare a notification icon
@@ -330,7 +340,14 @@ public class MainActivity
         });
 
         // Synthetic AssetRequest, In normal usage you will get them from the SDK such as Instance.Contacts.getAvatarLarge
-        AssetRequest.UrlAssetRequest light = new AssetRequest.UrlAssetRequest("https://upload.wikimedia.org/wikipedia/commons/a/ad/Balayette.jpg", new AssetRequest.Common(AssetRequest.Fit.Contain, null, null, null));
+        AssetRequest.UrlAssetRequest light = new AssetRequest.UrlAssetRequest(
+                "https://static.acrobits.net/acrobits-logo-bw-1024.png",
+                new AssetRequest.Common(
+                        AssetRequest.Fit.Contain,
+                        null,
+                        null,
+                        new ColorRequest.HexColorRequest("#FFFFFF")
+                ));
         AssetRequest assetRequest = new AssetRequest(light, light);
 
         ImageView assetRequestExampleImageView = findViewById(R.id.asset_request_example);
@@ -380,10 +397,7 @@ public class MainActivity
     protected void onDestroy()
     //******************************************************************
     {
-        if (mCall != null)
-            Instance.Calls.close(mCall);
-
-        DemoPhoneApplication.sListeners.unregister(this);
+        DemoServices.instance.getListeners().unregister(this);
 
         super.onDestroy();
     }
@@ -413,6 +427,16 @@ public class MainActivity
     {
         switch (v.getId())
         {
+            case R.id.camera:
+                for (CameraInfo info : VideoInstance.enumerateCameras())
+                {
+                    if (!info.equals(VideoInstance.getCurrentCamera()))
+                    {
+                        VideoInstance.switchCamera(info.id);
+                        break;
+                    }
+                }
+                break;
             case R.id.log:
                 boolean enabled = !Instance.preferences.trafficLogging.get();
                 Instance.preferences.trafficLogging.set(enabled);
@@ -585,8 +609,9 @@ public class MainActivity
             case Trying:
             case Ringing:
             case Established:
+                boolean hasVideo = call.hasAttribute(CallEvent.Attributes.INCOMING_VIDEO) || call.hasAttribute(CallEvent.Attributes.OUTGOING_VIDEO);
                 setAccordingToCall(true, false);
-                updateWindowFlags(true, false);
+                updateWindowFlags(true, hasVideo);
                 Instance.Audio.setCallAudioRoute(mRoute);
                 statistics();
                 break;
@@ -695,6 +720,7 @@ public class MainActivity
         mCallButton.setEnabled(!inCall && !ringing && mNumberView.getText().length() > 0);
         mSpeakerButton.setEnabled(inCall);
         mMuteButton.setEnabled(inCall);
+        mCameraButton.setEnabled(inCall && Instance.Calls.getDesiredMedia(mCall).outgoingVideoEnabled);
         mHoldButton.setEnabled(inCall);
         mHangUpButton.setEnabled(inCall);
         mAnswerButton.setEnabled(ringing);
@@ -725,7 +751,7 @@ public class MainActivity
         if (wakeup)
         {
             wakeupFlags = WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
-            if (AndroidUtil.getSystemService(KeyguardManager.class).isKeyguardLocked())
+            if (ContextCompat.getSystemService(this, KeyguardManager.class).isKeyguardLocked())
                 wakeupFlags |= WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED;
         }
 
@@ -753,7 +779,9 @@ public class MainActivity
             Instance.Calls.close(mCall);
 
         mCall = new CallEvent(new StreamParty(number).match(mAccountId).toRemoteUser());
-        mCall.transients.put(CallEvent.Transients.DIAL_ACTION, DialAction.VOICE_CALL.id);
+        mCall.transients.put(CallEvent.Transients.DIAL_ACTION,
+                             CollectionUtil.contains(SDK.features, SDK.Feature.Video)
+                                     ? DialAction.VIDEO_CALL.id : DialAction.VOICE_CALL.id);
         int res = Instance.Events.post(mCall);
         if (res != Instance.Events.PostResult.SUCCESS)
         {
@@ -956,25 +984,7 @@ public class MainActivity
     private void resetSDK()
     // ******************************************************************
     {
-        TerminateTask terminateTask = new TerminateTask()
-        {
-            // ******************************************************************
-            @Override
-            protected void onTerminated()
-            // ******************************************************************
-            {
-                // Here we unhook from SDK events.
-                DemoPhoneApplication.stop();
-
-                // And after a small delay, we restart it.
-                AndroidUtil.handler.postDelayed(DemoPhoneApplication::start, 1000);
-            }
-        };
-
-        // Using our termination helper stop the SDK.
-        // This will unregister all currently registered accounts and close all active calls.
-        // Once the SDK is fully stopped (or a hard timeout has been reached), onTerminated() will be called.
-        terminateTask.execute();
+        DemoServices.instance.getStateManager().restartSdkSync();
     }
 
     /**
